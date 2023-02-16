@@ -1,0 +1,415 @@
+{smcl}
+{txt}{sf}{ul off}{.-}
+      name:  {res}<unnamed>
+       {txt}log:  {res}C:\Users\laiza\OneDrive\Área de Trabalho\Insper Economia\5 Semestre\Micro IV\Trabalho Final\Micro IV - Trabalho Final - Grupo 05.smcl
+  {txt}log type:  {res}smcl
+ {txt}opened on:  {res}31 May 2022, 19:18:34
+{txt}
+{com}. 
+. 
+. ********** Bases de dados
+. ********************************************************************************
+. use "dados.dta"
+{txt}
+{com}. 
+. keep cod_upp upp ano mes hom_doloso roubo_veiculo apreensao_drogas pop_2010 registro_ocorrencias
+{txt}
+{com}. 
+. ********** A analise sera feita considerando apenas ate o ano de 2019 para que nao tenha contribuicoes dos efeitos da pandemia que atingiu os anos de 2020 e 2021
+. 
+. drop if ano==2020 | ano==2021
+{txt}(1,710 observations deleted)
+
+{com}. 
+. ********** Em janeiro do ano de 2018 aconteceu uma operação de intervecao militar em todo estado do Rio de Janeiro, por isso iremos identificar por meio de dummy o efeito desse periodo inicial na regressao 
+. ********************************************************************************
+. ********** Dummy de janeiro de 2018
+. 
+. gen jan18=0
+{txt}
+{com}. replace jan18=1 if mes==1 & ano==2018
+{txt}(38 real changes made)
+
+{com}. 
+. gen fev18=0
+{txt}
+{com}. replace fev18=1 if mes==2 & ano==2018
+{txt}(38 real changes made)
+
+{com}. 
+. gen marc18=0
+{txt}
+{com}. replace marc18=1 if mes==3 & ano==2018
+{txt}(38 real changes made)
+
+{com}. 
+. gen abr18=0
+{txt}
+{com}. replace abr18=1 if mes==4 & ano==2018
+{txt}(38 real changes made)
+
+{com}. 
+. ********** Identificando as UPPs abertas e fechadas 
+. ********************************************************************************
+. 
+. gen upp_fechada=0
+{txt}
+{com}. replace upp_fechada=1 if cod_upp== 2| cod_upp== 3 | cod_upp==14 | cod_upp==16 | cod_upp==29 | cod_upp==32 | cod_upp==33 | cod_upp==36 | cod_upp==37 | cod_upp==38
+{txt}(1,560 real changes made)
+
+{com}. 
+. ********** Sera utilizado o senso demografico respectivo de cada UPP do ano de 2010
+. ********************************************************************************
+. 
+. global controls pop_2010
+{txt}
+{com}. 
+. gen ocorrencias_pop=.
+{txt}(1,039,873 missing values generated)
+
+{com}. replace ocorrencias_pop= registro_ocorrencias/pop_2010
+{txt}(5,928 real changes made)
+
+{com}. 
+. ********** Diferenciando o periodo antes e apos o fechamento das UPPs 
+. ********************************************************************************
+. gen antes=1
+{txt}
+{com}. replace antes=0 if mes>=6 & ano>=2018
+{txt}(1,034,477 real changes made)
+
+{com}. 
+. ********** Balanceamento & PSM
+. ********************************************************************************
+. ********** O PSM sera realizado utilizando a populacao de 2010 de cada UPP e a média de crimes antes das UPPs serem instaladas 
+. 
+. bysort cod_upp: egen crimes_2008= mean (registro_ocorrencias)
+{txt}(1033945 missing values generated)
+
+{com}. 
+. psmatch2 upp_fechada $controls crimes_2008 , out(ocorrencias_pop)
+{res}
+{txt}Probit regression{col 49}Number of obs{col 67}= {res}     5,928
+{txt}{col 49}LR chi2({res}2{txt}){col 67}= {res}   1055.57
+{txt}{col 49}Prob > chi2{col 67}= {res}    0.0000
+{txt}Log likelihood = {res}-2888.7237{txt}{col 49}Pseudo R2{col 67}= {res}    0.1545
+
+{txt}{hline 13}{c TT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{col 1} upp_fechada{col 14}{c |}      Coef.{col 26}   Std. Err.{col 38}      z{col 46}   P>|z|{col 54}     [95% Con{col 67}f. Interval]
+{hline 13}{c +}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{space 4}pop_2010 {c |}{col 14}{res}{space 2}-.0000133{col 26}{space 2} 2.03e-06{col 37}{space 1}   -6.54{col 46}{space 3}0.000{col 54}{space 4}-.0000173{col 67}{space 3}-9.31e-06
+{txt}{space 1}crimes_2008 {c |}{col 14}{res}{space 2} .0257787{col 26}{space 2} .0011446{col 37}{space 1}   22.52{col 46}{space 3}0.000{col 54}{space 4} .0235352{col 67}{space 3} .0280221
+{txt}{space 7}_cons {c |}{col 14}{res}{space 2}-1.206107{col 26}{space 2} .0352443{col 37}{space 1}  -34.22{col 46}{space 3}0.000{col 54}{space 4}-1.275185{col 67}{space 3} -1.13703
+{txt}{hline 13}{c BT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{res}{txt}{hline 28}{c TT}{hline 59}
+        Variable     Sample {c |}    Treated     Controls   Difference         S.E.   T-stat
+{hline 28}{c +}{hline 59}
+ ocorrencias_pop  Unmatched {c |}{res} .002003203   .001706699   .000296504   .000038721     7.66
+{txt}{col 17}        ATT {c |}{res} .002003203   .003691839  -.001688636   .001010076    -1.67
+{txt}{hline 28}{c +}{hline 59}
+Note: S.E. does not take into account that the propensity score is estimated.
+
+           {c |} psmatch2:
+ psmatch2: {c |}   Common
+ Treatment {c |}  support
+assignment {c |} On suppor {c |}     Total
+{hline 11}{c +}{hline 11}{c +}{hline 10}
+ Untreated {c |}{res}     4,368 {txt}{c |}{res}     4,368 
+{txt}   Treated {c |}{res}     1,560 {txt}{c |}{res}     1,560 
+{txt}{hline 11}{c +}{hline 11}{c +}{hline 10}
+     Total {c |}{res}     5,928 {txt}{c |}{res}     5,928 
+{txt}
+{com}. 
+. pstest $controls crimes_2008
+
+{txt}{hline 24}{c TT}{hline 26}{c TT}{hline 15}{c TT}{hline 10}
+        {col 24} {c |}       Mean               {c |}     t-test    {c |}  V(T)/
+Variable{col 24} {c |} Treated Control    %bias {c |}    t    p>|t| {c |}  V(C)
+{hline 24}{c +}{hline 26}{c +}{hline 15}{c +}{hline 10}
+pop_2010              {col 24} {c |}{res}  22774    20883     15.6{txt} {c |}{res}   3.60  0.000{txt} {c |}{res}  0.49*
+{txt}crimes_2008           {col 24} {c |}{res} 52.216   39.127     37.7{txt} {c |}{res}  10.02  0.000{txt} {c |}{res}  4.95*
+{txt}{hline 24}{c BT}{hline 26}{c BT}{hline 15}{c BT}{hline 10}
+* if variance ratio outside [0.91; 1.10]
+
+{hline 70}
+Ps R2   LR chi2   p>chi2   MeanBias   MedBias      B       R     %Var 
+{hline 70}
+{res}0.027    114.98    0.000     26.6      26.6      38.0*    3.76*{col 67}100
+{txt}{hline 70}
+* if B>25%, R outside [0.5; 2]
+
+{com}. 
+. psgraph
+{res}{txt}
+{com}. 
+. ********** Diff in Diff via comparação de médias
+. ********************************************************************************
+. 
+. ********** Comparação de medias antes e depois para UPP que permaneceram abertas 
+. ********************************************************************************
+. 
+. ttest ocorrencias_pop if upp_fechada==0, by(antes)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    392{col 22} .0015835{col 34} .0000697{col 46} .0013806{col 58} .0014464{col 70} .0017206
+       {txt}1 {c |}{res}{col 12}  3,976{col 22} .0017188{col 34} .0000213{col 46} .0013412{col 58} .0016771{col 70} .0017605
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  4,368{col 22} .0017067{col 34} .0000204{col 46} .0013452{col 58} .0016668{col 70} .0017466
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22}-.0001353{col 34} .0000712{col 58}-.0002749{col 70} 4.24e-06
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res} -1.9010
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    4366
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.0287         {txt}Pr(|T| > |t|) = {res}0.0574          {txt}Pr(T > t) = {res}0.9713
+{txt}
+{com}. 
+. ********** Comparação de médias antes e depois para UPP que foram fechadas 
+. ********************************************************************************
+. 
+. ttest ocorrencias_pop if upp_fechada==1, by(antes)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    140{col 22}  .002128{col 34} .0001291{col 46} .0015277{col 58} .0018727{col 70} .0023833
+       {txt}1 {c |}{res}{col 12}  1,420{col 22} .0019909{col 34} .0000314{col 46} .0011826{col 58} .0019293{col 70} .0020525
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  1,560{col 22} .0020032{col 34} .0000308{col 46} .0012176{col 58} .0019427{col 70} .0020637
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22} .0001371{col 34} .0001078{col 58}-.0000744{col 70} .0003487
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res}  1.2716
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    1558
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.8981         {txt}Pr(|T| > |t|) = {res}0.2037          {txt}Pr(T > t) = {res}0.1019
+{txt}
+{com}. 
+. 
+. ********** Dif-in-Dif via regressao
+. ********************************************************************************
+. 
+. reg ocorrencias_pop upp_fechada i.ano 1.upp_fechada#c.ano jan18 $controls 
+
+{txt}      Source {c |}       SS           df       MS      Number of obs   ={res}     5,928
+{txt}{hline 13}{c +}{hline 34}   F(16, 5911)     = {res}    31.39
+{txt}       Model {c |} {res} .000807702        16  .000050481   {txt}Prob > F        ={res}    0.0000
+{txt}    Residual {c |} {res} .009506616     5,911  1.6083e-06   {txt}R-squared       ={res}    0.0783
+{txt}{hline 13}{c +}{hline 34}   Adj R-squared   ={res}    0.0758
+{txt}       Total {c |} {res} .010314319     5,927  1.7402e-06   {txt}Root MSE        =   {res} .00127
+
+{txt}{hline 18}{c TT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{col 1}  ocorrencias_pop{col 19}{c |}      Coef.{col 31}   Std. Err.{col 43}      t{col 51}   P>|t|{col 59}     [95% Con{col 72}f. Interval]
+{hline 18}{c +}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{space 6}upp_fechada {c |}{col 19}{res}{space 2}  -.07797{col 31}{space 2}  .020124{col 42}{space 1}   -3.87{col 51}{space 3}0.000{col 59}{space 4}-.1174203{col 72}{space 3}-.0385197
+{txt}{space 17} {c |}
+{space 14}ano {c |}
+{space 12}2008  {c |}{col 19}{res}{space 2}-.0000115{col 31}{space 2}  .000084{col 42}{space 1}   -0.14{col 51}{space 3}0.891{col 59}{space 4}-.0001763{col 72}{space 3} .0001532
+{txt}{space 12}2009  {c |}{col 19}{res}{space 2} .0000316{col 31}{space 2} .0000842{col 42}{space 1}    0.38{col 51}{space 3}0.707{col 59}{space 4}-.0001333{col 72}{space 3} .0001966
+{txt}{space 12}2010  {c |}{col 19}{res}{space 2}  .000276{col 31}{space 2} .0000844{col 42}{space 1}    3.27{col 51}{space 3}0.001{col 59}{space 4} .0001107{col 72}{space 3} .0004414
+{txt}{space 12}2011  {c |}{col 19}{res}{space 2} .0005958{col 31}{space 2} .0000846{col 42}{space 1}    7.04{col 51}{space 3}0.000{col 59}{space 4} .0004299{col 72}{space 3} .0007618
+{txt}{space 12}2012  {c |}{col 19}{res}{space 2} .0005699{col 31}{space 2}  .000085{col 42}{space 1}    6.70{col 51}{space 3}0.000{col 59}{space 4} .0004032{col 72}{space 3} .0007365
+{txt}{space 12}2013  {c |}{col 19}{res}{space 2} .0006866{col 31}{space 2} .0000855{col 42}{space 1}    8.03{col 51}{space 3}0.000{col 59}{space 4} .0005191{col 72}{space 3} .0008541
+{txt}{space 12}2014  {c |}{col 19}{res}{space 2} .0008752{col 31}{space 2}  .000086{col 42}{space 1}   10.18{col 51}{space 3}0.000{col 59}{space 4} .0007066{col 72}{space 3} .0010437
+{txt}{space 12}2015  {c |}{col 19}{res}{space 2} .0007849{col 31}{space 2} .0000866{col 42}{space 1}    9.06{col 51}{space 3}0.000{col 59}{space 4} .0006151{col 72}{space 3} .0009546
+{txt}{space 12}2016  {c |}{col 19}{res}{space 2}  .000596{col 31}{space 2} .0000873{col 42}{space 1}    6.83{col 51}{space 3}0.000{col 59}{space 4}  .000425{col 72}{space 3} .0007671
+{txt}{space 12}2017  {c |}{col 19}{res}{space 2} .0005412{col 31}{space 2}  .000088{col 42}{space 1}    6.15{col 51}{space 3}0.000{col 59}{space 4} .0003687{col 72}{space 3} .0007137
+{txt}{space 12}2018  {c |}{col 19}{res}{space 2} .0004143{col 31}{space 2} .0000906{col 42}{space 1}    4.57{col 51}{space 3}0.000{col 59}{space 4} .0002367{col 72}{space 3}  .000592
+{txt}{space 12}2019  {c |}{col 19}{res}{space 2} .0003357{col 31}{space 2} .0000897{col 42}{space 1}    3.74{col 51}{space 3}0.000{col 59}{space 4} .0001598{col 72}{space 3} .0005116
+{txt}{space 17} {c |}
+upp_fechada#c.ano {c |}
+{space 15}1  {c |}{col 19}{res}{space 2} .0000389{col 31}{space 2} 1.00e-05{col 42}{space 1}    3.89{col 51}{space 3}0.000{col 59}{space 4} .0000193{col 72}{space 3} .0000585
+{txt}{space 17} {c |}
+{space 12}jan18 {c |}{col 19}{res}{space 2}  .000363{col 31}{space 2} .0002149{col 42}{space 1}    1.69{col 51}{space 3}0.091{col 59}{space 4}-.0000582{col 72}{space 3} .0007842
+{txt}{space 9}pop_2010 {c |}{col 19}{res}{space 2}-1.15e-08{col 31}{space 2} 1.35e-09{col 42}{space 1}   -8.53{col 51}{space 3}0.000{col 59}{space 4}-1.41e-08{col 72}{space 3}-8.85e-09
+{txt}{space 12}_cons {c |}{col 19}{res}{space 2} .0014548{col 31}{space 2}  .000066{col 42}{space 1}   22.03{col 51}{space 3}0.000{col 59}{space 4} .0013253{col 72}{space 3} .0015842
+{txt}{hline 18}{c BT}{hline 11}{hline 11}{hline 9}{hline 8}{hline 13}{hline 12}
+{res}{txt}
+{com}. 
+. ********** Diff-in-Diff para crimes especificos 
+. ********************************************************************************
+. 
+. gen roubos_pop=.
+{txt}(1,039,873 missing values generated)
+
+{com}. replace roubos_pop= roubo_veiculo/pop_2010
+{txt}(5,928 real changes made)
+
+{com}. 
+. ********** Comparação de medias antes e depois para UPP que permaneceram abertas 
+. ********************************************************************************
+. 
+. ttest roubos_pop if upp_fechada==0, by(antes)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    392{col 22} .0000245{col 34} 3.13e-06{col 46} .0000619{col 58} .0000184{col 70} .0000307
+       {txt}1 {c |}{res}{col 12}  3,976{col 22} .0000305{col 34} 1.56e-06{col 46} .0000985{col 58} .0000275{col 70} .0000336
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  4,368{col 22}   .00003{col 34} 1.45e-06{col 46} .0000958{col 58} .0000272{col 70} .0000328
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22}-6.02e-06{col 34} 5.07e-06{col 58} -.000016{col 70} 3.92e-06
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res} -1.1879
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    4366
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.1175         {txt}Pr(|T| > |t|) = {res}0.2349          {txt}Pr(T > t) = {res}0.8825
+{txt}
+{com}. 
+. ********** Comparação de médias antes e depois para UPP que foram fechadas 
+. ********************************************************************************
+. 
+. ttest roubos_pop if upp_fechada==1, by(antes)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    140{col 22} .0001392{col 34}  .000021{col 46} .0002487{col 58} .0000977{col 70} .0001808
+       {txt}1 {c |}{res}{col 12}  1,420{col 22} .0000665{col 34} 3.38e-06{col 46} .0001272{col 58} .0000599{col 70} .0000731
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  1,560{col 22}  .000073{col 34} 3.64e-06{col 46} .0001438{col 58} .0000659{col 70} .0000802
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22} .0000728{col 34} .0000126{col 58}  .000048{col 70} .0000975
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res}  5.7718
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    1558
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}1.0000         {txt}Pr(|T| > |t|) = {res}0.0000          {txt}Pr(T > t) = {res}0.0000
+{txt}
+{com}. 
+. gen hom_pop=.
+{txt}(1,039,873 missing values generated)
+
+{com}. replace hom_pop= hom_doloso/pop_2010
+{txt}(5,928 real changes made)
+
+{com}. 
+. ********** Comparação de medias antes e depois para UPP que permaneceram abertas 
+. ********************************************************************************
+. 
+. ttest hom_pop if upp_fechada==0, by(antes)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    392{col 22} .0000123{col 34} 2.09e-06{col 46} .0000413{col 58} 8.23e-06{col 70} .0000164
+       {txt}1 {c |}{res}{col 12}  3,976{col 22} .0000105{col 34} 6.17e-07{col 46} .0000389{col 58} 9.30e-06{col 70} .0000117
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  4,368{col 22} .0000107{col 34} 5.92e-07{col 46} .0000391{col 58} 9.51e-06{col 70} .0000118
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22} 1.82e-06{col 34} 2.07e-06{col 58}-2.24e-06{col 70} 5.88e-06
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res}  0.8775
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    4366
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.8099         {txt}Pr(|T| > |t|) = {res}0.3803          {txt}Pr(T > t) = {res}0.1901
+{txt}
+{com}. 
+. ********** Comparação de médias antes e depois para UPP que foram fechadas 
+. ********************************************************************************
+. 
+. ttest hom_pop if upp_fechada==1, by(antes)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    140{col 22} .0000247{col 34} 4.69e-06{col 46} .0000555{col 58} .0000154{col 70} .0000339
+       {txt}1 {c |}{res}{col 12}  1,420{col 22}  .000016{col 34} 1.19e-06{col 46} .0000447{col 58} .0000137{col 70} .0000183
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  1,560{col 22} .0000168{col 34} 1.16e-06{col 46} .0000458{col 58} .0000145{col 70}  .000019
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22} 8.67e-06{col 34} 4.05e-06{col 58} 7.20e-07{col 70} .0000166
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res}  2.1391
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    1558
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.9837         {txt}Pr(|T| > |t|) = {res}0.0326          {txt}Pr(T > t) = {res}0.0163
+{txt}
+{com}. 
+. 
+. 
+. ********** Teste de placebo 
+. ********** Comparação de médias antes e depois para UPP que foram fechadas 
+. ********************************************************************************
+. drop if ano==2019 | ano<2014
+{txt}(3,648 observations deleted)
+
+{com}. 
+. gen antes_fake=1
+{txt}
+{com}. replace antes_fake=0 if ano>2016
+{txt}(1,034,857 real changes made)
+
+{com}. 
+. ********** Comparação de medias antes e depois para UPP que permaneceram abertas 
+. ********************************************************************************
+. 
+. ttest ocorrencias_pop if upp_fechada==0, by(antes_fake)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    672{col 22} .0017148{col 34} .0000594{col 46} .0015405{col 58} .0015981{col 70} .0018315
+       {txt}1 {c |}{res}{col 12}  1,008{col 22} .0020244{col 34} .0000342{col 46} .0010866{col 58} .0019572{col 70} .0020916
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}  1,680{col 22} .0019006{col 34} .0000316{col 46}  .001296{col 58} .0018385{col 70} .0019626
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22}-.0003096{col 34} .0000641{col 58}-.0004354{col 70}-.0001838
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res} -4.8286
+{txt}Ho: diff = 0                                     degrees of freedom = {res}    1678
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.0000         {txt}Pr(|T| > |t|) = {res}0.0000          {txt}Pr(T > t) = {res}1.0000
+{txt}
+{com}. 
+. ********** Comparação de médias antes e depois para UPP que foram fechadas 
+. ********************************************************************************
+. 
+. ttest ocorrencias_pop if upp_fechada==1, by(antes_fake)
+
+{txt}Two-sample t test with equal variances
+{hline 9}{c TT}{hline 68}
+   Group{col 10}{c |}{col 16}Obs{col 27}Mean{col 35}Std. Err.{col 47}Std. Dev.{col 59}[95% Conf. Interval]
+{hline 9}{c +}{hline 68}
+       0 {c |}{res}{col 12}    240{col 22} .0023548{col 34} .0001104{col 46}   .00171{col 58} .0021374{col 70} .0025723
+       {txt}1 {c |}{res}{col 12}    360{col 22} .0023754{col 34} .0000597{col 46} .0011325{col 58}  .002258{col 70} .0024928
+{txt}{hline 9}{c +}{hline 68}
+combined {c |}{res}{col 12}    600{col 22} .0023672{col 34} .0000568{col 46} .0013912{col 58} .0022556{col 70} .0024787
+{txt}{hline 9}{c +}{hline 68}
+    diff {c |}{res}{col 22}-.0000206{col 34}  .000116{col 58}-.0002485{col 70} .0002073
+{txt}{hline 9}{c BT}{hline 68}
+    diff = mean({res}0{txt}) - mean({res}1{txt})                                      t = {res} -0.1774
+{txt}Ho: diff = 0                                     degrees of freedom = {res}     598
+
+    {txt}Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = {res}0.4296         {txt}Pr(|T| > |t|) = {res}0.8592          {txt}Pr(T > t) = {res}0.5704
+{txt}
+{com}. 
+. 
+. 
+. 
+. log close
+      {txt}name:  {res}<unnamed>
+       {txt}log:  {res}C:\Users\laiza\OneDrive\Área de Trabalho\Insper Economia\5 Semestre\Micro IV\Trabalho Final\Micro IV - Trabalho Final - Grupo 05.smcl
+  {txt}log type:  {res}smcl
+ {txt}closed on:  {res}31 May 2022, 19:18:47
+{txt}{.-}
+{smcl}
+{txt}{sf}{ul off}
